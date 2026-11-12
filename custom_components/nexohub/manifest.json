@@ -1,0 +1,13 @@
+{
+  "domain": "nexohub",
+  "name": "Controlart Nexo Hub",
+  "codeowners": ["@fabian-rezende"],
+  "config_flow": true,
+  "dhcp": [{ "hostname": "nxh-rele-*" }, { "hostname": "nxh-dimmer-*" }, { "registered_devices": true }],
+  "documentation": "https://github.com/fabian-rezende/nexo-homeassistant",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/fabian-rezende/nexo-homeassistant/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
