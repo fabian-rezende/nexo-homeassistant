@@ -17,6 +17,10 @@ from nexohub_pure.nexo import NexoSystem
 RELE = {"sn": "NXHR1-000000-000009", "addr": "56:5B:47", "ip": "127.0.0.1"}
 DIM = {"sn": "NXHD1-000000-000009", "addr": "2F:67:1F", "ip": "127.0.0.2"}
 LIXO = {"sn": "NXHD1-000000-000008", "addr": "11:22:33", "ip": "127.0.0.3"}   # slot 6 com os níveis do dimmer
+# lista gravada e depois estragada pela memória dos níveis (visto no dimmer da bancada em 12/11):
+# o cabeçalho guarda o sha da lista certa, o conteúdo tem um registro dos níveis por cima
+ESTRAGADA = {"sn": "NXHD1-000000-000007", "addr": "44:55:66", "ip": "127.0.0.4"}
+HUBS = (RELE, DIM, LIXO, ESTRAGADA)
 U = "AAAAAAAA-0000-5000-8000-0000000000"
 
 
@@ -36,11 +40,16 @@ SLOTS = {
     # o dimmer marcou o mesmo canal 3 (mesmo UUID) e mais um canal só dele
     DIM["addr"]: voice(DIM["sn"], [("02", "2F:67:1F", 3, "D", "DIMMER", "Dimmer pelo dimmer"), ("05", "2F:67:1F", 0, "D", "DIMMER", "Armario")]),
     LIXO["addr"]: bytes(range(256)) * 4,
+    ESTRAGADA["addr"]: voice(ESTRAGADA["sn"], [("06", "44:55:66", 0, "D", "DIMMER", "Estragado")]),
 }
+SHA_GRAVADO = {ESTRAGADA["addr"]: hashlib.sha256(SLOTS[ESTRAGADA["addr"]]).hexdigest()}
+_e = bytearray(SLOTS[ESTRAGADA["addr"]])
+_e[-40:-20] = b"C@HD`\x00\x00\x00\x0c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"   # registro dos níveis por cima
+SLOTS[ESTRAGADA["addr"]] = bytes(_e)
 
 
 async def main() -> None:
-    got: dict[str, list[dict]] = {"127.0.0.1": [], "127.0.0.2": [], "127.0.0.3": []}
+    got: dict[str, list[dict]] = {h["ip"]: [] for h in HUBS}
     memory: dict[str, dict] = {U + "01": {"powerState": "OFF"}, U + "03": {"rangeValue": 30}, U + "05": {"powerState": "ON", "brightness": 60}}
 
     def make(ip: str, me: dict):
@@ -53,11 +62,12 @@ async def main() -> None:
                 got[ip].append(m)
                 rid, cmd = m.get("id"), m.get("cmd")
                 if cmd == "devices.loaddevices":
-                    lst = [{**h, "on": True, "self": h is me} for h in (RELE, DIM, LIXO)]
-                    reply({"id": rid, "data": {"total": 3, "list": lst}, "ok": True})
+                    lst = [{**h, "on": True, "self": h is me} for h in HUBS]
+                    reply({"id": rid, "data": {"total": len(lst), "list": lst}, "ok": True})
                 elif cmd == "html.get":
                     raw6 = SLOTS.get(m["targetaddr"], b"")
-                    reply({"id": rid, "data": {"slot": 6, "present": bool(raw6), "len": len(raw6), "sha256": hashlib.sha256(raw6).hexdigest()}, "ok": True})
+                    sha6 = SHA_GRAVADO.get(m["targetaddr"]) or hashlib.sha256(raw6).hexdigest()
+                    reply({"id": rid, "data": {"slot": 6, "present": bool(raw6), "len": len(raw6), "sha256": sha6}, "ok": True})
                 elif cmd == "html.read":
                     d, raw6 = m["data"], SLOTS[m["targetaddr"]]
                     part = raw6[d["from"]:d["from"] + d["max"]]
@@ -75,12 +85,15 @@ async def main() -> None:
 
     servers = [await asyncio.start_server(make(h["ip"], h), h["ip"], 0 if h is RELE else port) for h in (RELE,) for port in [0]]
     port = servers[0].sockets[0].getsockname()[1]
-    servers += [await asyncio.start_server(make(h["ip"], h), h["ip"], port) for h in (DIM, LIXO)]
+    servers += [await asyncio.start_server(make(h["ip"], h), h["ip"], port) for h in (DIM, LIXO, ESTRAGADA)]
 
     found = await find_system("127.0.0.2", port)        # entra pelo dimmer: a âncora continua sendo o relé
     assert [h.sn for h in found.holders] == [RELE["sn"], DIM["sn"]], found.holders
     assert found.sn == RELE["sn"]
     assert LIXO["sn"] in found.ignored, "slot 6 sem lista de voz tem de ser ignorado"
+    assert found.ignored.get(ESTRAGADA["sn"]) == SHA_GRAVADO[ESTRAGADA["addr"]], "lista estragada: ignorada pelo sha do cabeçalho"
+    reads = [m for m in got[ESTRAGADA["ip"]] if m.get("cmd") == "html.read"]
+    assert len(reads) == 2, f"a estragada é lida duas vezes antes de desistir ({len(reads)})"
     eps = endpoints_of_system(found)
     names = sorted(e.name for e in eps)
     assert names == ["Armario", "Cena", "Cortina", "Dimmer pelo relé", "Luz"], names   # canal repetido: um só; desmarcado: fora
@@ -112,14 +125,15 @@ async def main() -> None:
     assert nx.states[by["Armario"].uuid] == {"on": True, "brightness": 40}
     assert nx.states[by["Cortina"].uuid] == {"position": 75}
 
-    assert not await nx.lists_changed(), "nada mudou"
+    assert not await nx.lists_changed(), "nada mudou (a lista estragada não pode recarregar a cada 5 min)"
     SLOTS[DIM["addr"]] = voice(DIM["sn"], [("05", "2F:67:1F", 0, "D", "DIMMER", "Armario")])   # desmarcou no dimmer
     assert await nx.lists_changed(), "mudança na lista do dimmer tem de ser notada"
 
     await nx.stop()
     for s in servers:
         s.close()
-    print("OK: listas de todos os hubs; repetido vira um; comando e report no hub da lista; lixo do dimmer ignorado; mudança notada")
+    print("OK: listas de todos os hubs; repetido vira um; comando e report no hub da lista; lixo do dimmer e "
+          "lista estragada ignorados sem recarga; mudança notada")
 
 
 asyncio.run(main())

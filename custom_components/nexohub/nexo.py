@@ -262,6 +262,22 @@ class NexoLink:
         total, sha = await self.voice_head(addr)
         if not total:
             raise NexoError("o hub está sem lista de comando de voz")
+        for attempt in range(2):
+            raw = await self._download(addr, total)
+            if not sha or hashlib.sha256(raw).hexdigest() == sha:
+                break
+            if attempt:
+                # Duas leituras completas e o conteúdo não bate com o sha do cabeçalho: a lista foi
+                # alterada na flash depois de gravada (no dimmer, a memória dos níveis grava no mesmo
+                # lugar). Fica ignorada até ser gravada de novo (o sha do cabeçalho muda).
+                raise VoiceFormatError("o conteúdo do slot 6 não confere com o sha256 gravado")
+        try:
+            return parse_voice(raw, sha)
+        except (UnicodeDecodeError, ValueError) as err:
+            raise VoiceFormatError("o slot 6 não tem uma lista de voz legível") from err
+
+    async def _download(self, addr: str, total: int) -> bytes:
+        """Lê o slot 6 em fatias (a fatia encolhe se o hub estiver sem memória)."""
         raw, frm, size = b"", 0, CHUNK
         while frm < total:
             try:
@@ -278,12 +294,7 @@ class NexoLink:
             frm += len(chunk)
             if d.get("eof"):
                 break
-        if sha and hashlib.sha256(raw).hexdigest() != sha:
-            raise NexoError("a lista de voz veio incompleta (sha256 não confere)")
-        try:
-            return parse_voice(raw, sha)
-        except (UnicodeDecodeError, ValueError) as err:
-            raise VoiceFormatError("o slot 6 não tem uma lista de voz legível") from err
+        return raw
 
     async def hubs(self) -> list[dict[str, Any]]:
         """Todos os hubs da malha (devices.loaddevices, 25 por página)."""
