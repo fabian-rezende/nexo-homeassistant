@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar o HACS e o Nexo Hub no Home Assistant</title>
+<style>
+  :root { --verde: #102610; --fundo: #f6f7f5; --cartao: #fff; --texto: #1b1f1b; --suave: #5b645b; --borda: #dfe4dd; --codigo: #eef1ec; --aviso: #fff6dc; --aviso-borda: #e6cf82; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fundo: #0f140f; --cartao: #171d17; --texto: #e8ece7; --suave: #a3ada2; --borda: #2b342b; --codigo: #212921; --aviso: #2d2810; --aviso-borda: #6b5c1e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.55 "Segoe UI", system-ui, sans-serif; }
+  header { background: var(--verde); color: #fff; padding: 28px 16px; }
+  header div, main { max-width: 820px; margin: 0 auto; }
+  header h1 { margin: 0 0 6px; font-size: 1.6rem; }
+  header p { margin: 0; opacity: .85; }
+  main { padding: 20px 16px 48px; }
+  section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 18px 20px; margin-top: 18px; }
+  h2 { margin: 0 0 10px; font-size: 1.2rem; }
+  h3 { margin: 18px 0 6px; font-size: 1.02rem; }
+  ol, ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  code { background: var(--codigo); padding: 1px 5px; border-radius: 4px; font: .92em Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+  pre { background: var(--codigo); padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  pre code { background: none; padding: 0; overflow-wrap: normal; }
+  .aviso { background: var(--aviso); border: 1px solid var(--aviso-borda); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .suave { color: var(--suave); font-size: .93rem; }
+  .tabela { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  a { color: inherit; }
+  nav a { display: inline-block; margin: 0 14px 4px 0; }
+</style>
+</head>
+<body>
+<header><div>
+  <h1>HACS e Nexo Hub no Home Assistant</h1>
+  <p>Do Home Assistant recém-instalado até os circuitos do Nexo aparecendo nos painéis.</p>
+</div></header>
+<main>
+
+<section>
+  <h2>Resumo</h2>
+  <nav>
+    <a href="#antes">1. Antes de começar</a>
+    <a href="#hacs">2. Instalar o HACS</a>
+    <a href="#ativar">3. Ativar o HACS</a>
+    <a href="#nexo">4. Instalar o Nexo Hub</a>
+    <a href="#sistema">5. Adicionar o sistema Nexo</a>
+  </nav>
+  <p class="suave">O HACS é a loja de integrações da comunidade do Home Assistant. Ele não vem instalado: é preciso instalar uma vez, e depois ele baixa e atualiza integrações como a do Nexo Hub.</p>
+  <div class="aviso">Os nomes de menu mudam um pouco entre versões do Home Assistant. Se algum passo não bater com a sua tela, a referência oficial é <a href="https://hacs.xyz/docs/use/">hacs.xyz/docs/use</a>.</div>
+</section>
+
+<section id="antes">
+  <h2>1. Antes de começar</h2>
+  <ul>
+    <li>Home Assistant já instalado e com o primeiro usuário criado (a tela de boas-vindas concluída).</li>
+    <li>Home Assistant com acesso à internet.</li>
+    <li>Uma conta no GitHub (gratuita). O HACS pede para vincular uma conta na ativação.</li>
+    <li>Saber o tipo da instalação: <strong>Configurações → Sistema → Sobre</strong>, linha "Método de instalação".</li>
+  </ul>
+  <div class="tabela"><table>
+    <tr><th>Método de instalação</th><th>Como instalar o HACS</th></tr>
+    <tr><td>Home Assistant OS ou Supervised</td><td>Caminho A (add-on Get HACS)</td></tr>
+    <tr><td>Container (Docker)</td><td>Caminho B (comando dentro do contêiner)</td></tr>
+    <tr><td>Core (Python direto)</td><td>Caminho C (comando na pasta de configuração)</td></tr>
+  </table></div>
+</section>
+
+<section id="hacs">
+  <h2>2. Instalar o HACS</h2>
+
+  <h3>Caminho A: Home Assistant OS ou Supervised</h3>
+  <ol>
+    <li>Abra <strong>Configurações → Add-ons → Loja de add-ons</strong> (em versões recentes o menu aparece como "Apps").</li>
+    <li>No menu de três pontos, escolha <strong>Repositórios</strong> e adicione: <code>https://github.com/hacs/addons</code></li>
+    <li>Feche a janela, procure o add-on <strong>Get HACS</strong> e clique em <strong>Instalar</strong>.</li>
+    <li>Clique em <strong>Iniciar</strong> e abra a aba <strong>Registro</strong>: ele avisa quando terminou de baixar.</li>
+    <li>Reinicie o Home Assistant: <strong>Configurações → Sistema → botão de energia → Reiniciar</strong>.</li>
+  </ol>
+
+  <h3>Caminho B: Container (Docker)</h3>
+  <p>No computador onde o Docker roda:</p>
+  <pre><code>docker exec -it homeassistant bash
+wget -O - https://get.hacs.xyz | bash -
+exit
+docker restart homeassistant</code></pre>
+  <p class="suave">Troque <code>homeassistant</code> pelo nome do seu contêiner, se for outro (<code>docker ps</code> mostra).</p>
+
+  <h3>Caminho C: Core</h3>
+  <p>Com o usuário que roda o Home Assistant, dentro da pasta de configuração (onde fica o <code>configuration.yaml</code>):</p>
+  <pre><code>wget -O - https://get.hacs.xyz | bash -</code></pre>
+  <p>Depois reinicie o Home Assistant.</p>
+
+  <p class="suave">Nos três caminhos o resultado é o mesmo: a pasta <code>custom_components/hacs</code> dentro da configuração.</p>
+</section>
+
+<section id="ativar">
+  <h2>3. Ativar o HACS</h2>
+  <ol>
+    <li>Limpe o cache do navegador ou recarregue a página com <strong>Ctrl + F5</strong>. Sem isso o HACS pode não aparecer na busca.</li>
+    <li>Abra <strong>Configurações → Dispositivos e serviços → Adicionar integração</strong>.</li>
+    <li>Procure <strong>HACS</strong> e selecione.</li>
+    <li>Marque as caixas de confirmação e clique em <strong>Enviar</strong>.</li>
+    <li>A tela mostra um código de 8 caracteres. Abra <a href="https://github.com/login/device">github.com/login/device</a>, entre na sua conta, digite o código e autorize o HACS.</li>
+    <li>Volte ao Home Assistant e conclua. O item <strong>HACS</strong> aparece no menu lateral.</li>
+  </ol>
+</section>
+
+<section id="nexo">
+  <h2>4. Instalar a integração Nexo Hub</h2>
+
+  <h3>Pelo HACS</h3>
+  <p>O HACS não tem uma lista própria da Controlart: ele baixa a integração de um <strong>endereço de repositório público no GitHub</strong>, que você informa uma vez.</p>
+  <p>Endereço da integração Nexo Hub: <code>https://github.com/fabian-rezende/nexo-homeassistant</code></p>
+  <p>Atalho: <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=fabian-rezende&amp;repository=nexo-homeassistant&amp;category=integration">abrir o Nexo Hub direto no HACS</a> (o link abre o seu Home Assistant já no repositório). Ou siga os passos:</p>
+  <ol>
+    <li>Abra <strong>HACS</strong> no menu lateral.</li>
+    <li>No menu de três pontos, escolha <strong>Repositórios personalizados</strong>.</li>
+    <li>Cole o endereço acima, escolha o tipo <strong>Integração</strong> e clique em <strong>Adicionar</strong>.</li>
+    <li>Procure <strong>Controlart Nexo Hub</strong> na lista, abra e clique em <strong>Baixar</strong>.</li>
+    <li>Reinicie o Home Assistant.</li>
+  </ol>
+
+  <h3>Manual (sem HACS)</h3>
+  <ol>
+    <li>Copie a pasta <code>custom_components/nexohub</code> deste repositório para dentro da pasta de configuração do Home Assistant, ficando <code>&lt;config&gt;/custom_components/nexohub</code>.</li>
+    <li>Reinicie o Home Assistant.</li>
+  </ol>
+  <p class="suave">No Home Assistant OS, a pasta de configuração é acessível pelos add-ons Samba share ou File editor. No Docker, é a pasta do computador montada em <code>/config</code>.</p>
+</section>
+
+<section id="sistema">
+  <h2>5. Adicionar o sistema Nexo</h2>
+  <ol>
+    <li>Abra <strong>Configurações → Dispositivos e serviços</strong>.</li>
+    <li>Se um Nexo Hub aparecer em "Descobertos", clique em <strong>Adicionar</strong>. A descoberta acontece quando o hub pede endereço à rede, então pode demorar.</li>
+    <li>Se não aparecer: <strong>Adicionar integração → Controlart Nexo Hub</strong> e digite o IP de <strong>qualquer</strong> Nexo Hub da casa. A integração acha o hub principal sozinha.</li>
+    <li>Aparecem só os itens marcados para comando de voz, com o nome falado, já separados por ambiente.</li>
+  </ol>
+  <h3>O que é preciso no Nexo</h3>
+  <ul>
+    <li>Os hubs na mesma rede do Home Assistant.</li>
+    <li>Os itens marcados na tela <strong>"Enviar dispositivos para comando de voz"</strong> do configurador do hub principal. É essa lista, a mesma da Alexa e do Google, que define o que aparece no Home Assistant.</li>
+    <li>Cortina calibrada no configurador, para aceitar comando.</li>
+    <li>IP fixo ou reservado no roteador é recomendável.</li>
+  </ul>
+  <p class="suave">Marcar ou desmarcar itens no configurador muda o Home Assistant sozinho em até 5 minutos.</p>
+</section>
+
+</main>
+</body>
+</html>

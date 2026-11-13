@@ -39,6 +39,8 @@ Ou, à mão:
 3. Abra **Controlart Nexo Hub** e clique em **Baixar**.
 4. Reinicie o Home Assistant.
 
+Não tem o HACS? O passo a passo completo está em [`instalacao-hacs.html`](instalacao-hacs.html).
+
 ### Manual
 
 Copie a pasta `custom_components/nexohub` para `<config>/custom_components/nexohub` e reinicie o Home Assistant.
