@@ -137,13 +137,13 @@ docker restart homeassistant</code></pre>
   <ol>
     <li>Abra <strong>Configurações → Dispositivos e serviços</strong>.</li>
     <li>Se um Nexo Hub aparecer em "Descobertos", clique em <strong>Adicionar</strong>. A descoberta acontece quando o hub pede endereço à rede, então pode demorar.</li>
-    <li>Se não aparecer: <strong>Adicionar integração → Controlart Nexo Hub</strong> e digite o IP de <strong>qualquer</strong> Nexo Hub da casa. A integração acha o hub principal sozinha.</li>
+    <li>Se não aparecer: <strong>Adicionar integração → Controlart Nexo Hub</strong> e digite o IP de <strong>qualquer</strong> Nexo Hub da casa. A integração encontra os outros hubs sozinha.</li>
     <li>Aparecem só os itens marcados para comando de voz, com o nome falado, já separados por ambiente.</li>
   </ol>
   <h3>O que é preciso no Nexo</h3>
   <ul>
     <li>Os hubs na mesma rede do Home Assistant.</li>
-    <li>Os itens marcados na tela <strong>"Enviar dispositivos para comando de voz"</strong> do configurador do hub principal. É essa lista, a mesma da Alexa e do Google, que define o que aparece no Home Assistant.</li>
+    <li>Os itens marcados na tela <strong>"Enviar dispositivos para comando de voz"</strong> do configurador, em qualquer hub. Essas listas, as mesmas da Alexa e do Google, definem o que aparece no Home Assistant; a integração junta a de todos os hubs.</li>
     <li>Cortina calibrada no configurador, para aceitar comando.</li>
     <li>IP fixo ou reservado no roteador é recomendável.</li>
   </ul>

@@ -1,34 +1,46 @@
-"""Acha o hub principal a partir de qualquer hub da casa. Sem dependência do Home Assistant."""
+"""Acha o sistema Nexo a partir de qualquer hub da casa. Sem dependência do Home Assistant.
+
+A tela de comando de voz pode ser aberta em qualquer hub (relé ou dimmer) e cada hub guarda a
+sua própria lista. Por isso a descoberta lê o slot 6 de TODOS os hubs da malha e junta os itens.
+"""
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from typing import Any
 import urllib.request
 
-from .nexo import NexoError, NexoHub, VoiceList
+from .nexo import PORT, Holder, NexoError, NexoLink, VoiceFormatError, VoiceList, merge_lists
 
 
 class NoPrincipal(Exception):
-    """Não foi possível achar o hub principal."""
+    """Nenhum hub da malha tem lista de comando de voz com itens marcados."""
 
 
 @dataclass
-class Principal:
-    host: str
-    addr: str
-    sn: str
-    name: str
-    model: str
-    fw: str
-    hubs: list[dict[str, Any]]      # todos os hubs da malha (devices.loaddevices)
-    appdata: dict[str, Any]          # ambientes (crl.appdata/1)
-    voice: VoiceList
+class System:
+    holders: list[Holder]             # hubs com lista; o primeiro é a âncora
+    lists: list[VoiceList]            # na mesma ordem
+    hubs: list[dict[str, Any]]        # todos os hubs da malha (devices.loaddevices)
+    appdata: dict[str, Any]           # ambientes (crl.appdata/1)
+    ignored: dict[str, str] = field(default_factory=dict)   # SN -> sha de slot 6 que não é lista de voz
+
+    @property
+    def sn(self) -> str:
+        """Identidade do sistema: o SN da âncora."""
+        return self.holders[0].sn
+
+    @property
+    def host(self) -> str:
+        return self.holders[0].host
+
+    def hub(self, sn: str) -> dict[str, Any]:
+        return next((h for h in self.hubs if h.get("sn") == sn), {})
 
 
 def _get_json(url: str) -> Any:
-    with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310 - IP local informado pelo usuário
+    with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310 - IP local da casa
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -41,66 +53,71 @@ async def fetch_appdata(host: str) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-async def _hub_list(hub: NexoHub) -> list[dict[str, Any]]:
-    hubs: list[dict[str, Any]] = []
-    frm = 0
-    while True:
-        d = (await hub.request("*", "devices.loaddevices", {"from": frm, "max": 25}))["data"]
-        page = d.get("list") or []
-        hubs.extend(page)
-        frm += len(page)
-        if not page or frm >= int(d.get("total") or 0):
-            return hubs
+def _order(h: dict[str, Any], main: str) -> tuple:
+    """Âncora: o relé apontado como principal nos ambientes, depois relés, depois o resto; empate pelo SN."""
+    sn = str(h.get("sn") or "")
+    return (str(h.get("addr") or "").upper() != main, not sn.startswith("NXHR1"), sn)
 
 
-async def find_principal(host: str) -> Principal:
-    """Conecta em `host`, acha o principal (o `main` dos ambientes) e lê a lista de voz dele.
+async def find_system(host: str, port: int = PORT) -> System:
+    """Conecta em `host`, lista os hubs da malha e lê a lista de voz de cada um.
 
-    ConnectionError: `host` não atendeu. NoPrincipal: não achou o principal ou ele está sem lista.
+    ConnectionError: `host` não atendeu. NoPrincipal: nenhum hub com itens marcados.
     """
     appdata = await fetch_appdata(host)
-    probe = NexoHub(host)
-    await probe.start()
+    link = NexoLink(host, port)
+    await link.start()
     try:
-        hubs = await _hub_list(probe)
-    except NexoError as err:
-        raise NoPrincipal(str(err)) from err
+        hubs = await link.hubs()
+        main = str(appdata.get("main") or "").upper()
+        found: list[tuple[dict[str, Any], VoiceList]] = []
+        ignored: dict[str, str] = {}
+        for h in sorted((h for h in hubs if h.get("sn") and h.get("addr") and h.get("ip") and h.get("on", True)),
+                        key=lambda h: _order(h, main)):
+            sn, addr = str(h["sn"]), str(h["addr"]).upper()
+            try:
+                total, sha = await link.voice_head(addr)
+            except NexoError:
+                continue
+            if not total:
+                continue
+            try:
+                vl = await _read_direct(str(h["ip"]), addr, link, port)
+            except VoiceFormatError:
+                ignored[sn] = sha   # slot 6 com outra coisa (no dimmer o espaço é dividido com os níveis)
+                continue
+            except (NexoError, ConnectionError):
+                continue            # não deu para ler agora: a conferência de 5 min tenta de novo
+            if vl.sn and vl.sn != sn:
+                ignored[sn] = sha   # lista copiada de outro hub: não é dele
+                continue
+            if vl.endpoints:
+                found.append((h, vl))
     finally:
-        await probe.stop()
+        await link.stop()
+    if not found:
+        raise NoPrincipal("no_voice")
+    holders = [Holder(sn=str(h["sn"]), addr=str(h["addr"]).upper(), host=str(h["ip"]), sha256=vl.sha256) for h, vl in found]
+    if not appdata or holders[0].host != host:
+        appdata = await fetch_appdata(holders[0].host) or appdata
+    return System(holders=holders, lists=[vl for _, vl in found], hubs=hubs, appdata=appdata, ignored=ignored)
 
-    # O principal é o hub que tem a lista de voz gravada no slot 6 com o próprio SN. O `main` dos
-    # ambientes só define a ordem da busca: um hub secundário pode guardar ambientes antigos que
-    # apontam para ele mesmo (visto na bancada).
-    main = str(appdata.get("main") or "").upper()
-    cand = sorted(
-        (h for h in hubs if str(h.get("sn") or "").startswith("NXHR1") and h.get("ip")),
-        key=lambda h: (str(h.get("addr") or "").upper() != main, not h.get("self")),
-    )
-    empty = False
-    for h in cand:
-        hub = NexoHub(str(h["ip"]))
-        try:
-            await hub.start()
-        except ConnectionError:
-            continue
-        try:
-            voice = await hub.read_voice(str(h["addr"]).upper())
-        except NexoError:
-            continue
-        finally:
-            await hub.stop()
-        if voice.sn and voice.sn != h.get("sn"):
-            continue  # lista copiada de outro hub: não é o principal
-        if not voice.endpoints:
-            empty = True
-            continue
-        appdata = await fetch_appdata(str(h["ip"])) or appdata
-        return Principal(
-            host=str(h["ip"]), addr=str(h["addr"]).upper(), sn=str(h.get("sn") or voice.sn),
-            name=str(h.get("name") or ""), model="Nexo Hub Relé" if str(h.get("sn", "")).startswith("NXHR1") else "Nexo Hub",
-            fw=str(h.get("fw") or ""), hubs=hubs, appdata=appdata, voice=voice,
-        )
-    raise NoPrincipal("no_voice" if empty else "no_principal")
+
+async def _read_direct(host: str, addr: str, fallback: NexoLink, port: int = PORT) -> VoiceList:
+    """Lê a lista conectando no próprio hub (a malha só espera 400 ms); se não abrir, pela malha."""
+    link = NexoLink(host, port)
+    try:
+        await link.start()
+    except ConnectionError:
+        return await fallback.read_voice(addr)
+    try:
+        return await link.read_voice(addr)
+    finally:
+        await link.stop()
+
+
+def endpoints_of_system(system: System) -> list:
+    return merge_lists(system.lists)
 
 
 def room_of(appdata: dict[str, Any], addr: str, out: int) -> str | None:

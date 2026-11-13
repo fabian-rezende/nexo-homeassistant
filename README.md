@@ -2,7 +2,9 @@
 
 Integração do Home Assistant para o sistema **Nexo Hub** (Relé e Dimmer), da Controlart.
 
-O Home Assistant mostra **só os itens marcados** na tela "Enviar dispositivos para comando de voz" do configurador do Nexo, com o nome falado, e comanda cada um **do mesmo jeito que o comando de voz chega** ao hub principal. Funciona pela rede local, sem nuvem e sem conta.
+O Home Assistant mostra **só os itens marcados** na tela "Enviar dispositivos para comando de voz" do configurador do Nexo, com o nome falado, e comanda cada um **do mesmo jeito que o comando de voz chega** ao hub. Funciona pela rede local, sem nuvem e sem conta.
+
+A tela de comando de voz pode ser aberta em qualquer hub (relé ou dimmer), e cada um guarda a sua lista. A integração lê a lista de **todos** os hubs da casa e junta os itens; o mesmo circuito marcado em duas listas aparece uma vez só.
 
 ## O que aparece no Home Assistant
 
@@ -24,7 +26,7 @@ Desmarcar um item no configurador tira a entidade do Home Assistant em até 5 mi
 ## Requisitos
 
 - Nexo Hub na mesma rede do Home Assistant.
-- Itens marcados na tela de comando de voz do configurador do hub principal.
+- Itens marcados na tela de comando de voz do configurador (em qualquer hub).
 
 ## Instalação
 
@@ -47,12 +49,12 @@ Copie a pasta `custom_components/nexohub` para `<config>/custom_components/nexoh
 
 ## Adicionar o sistema
 
-**Configurações → Dispositivos e serviços → Adicionar integração → Controlart Nexo Hub** e informe o IP de **qualquer** Nexo Hub da casa. A integração acha o hub principal sozinha.
+**Configurações → Dispositivos e serviços → Adicionar integração → Controlart Nexo Hub** e informe o IP de **qualquer** Nexo Hub da casa. A integração encontra os outros hubs sozinha.
 
 Um Nexo Hub também pode aparecer em "Descobertos" quando pedir endereço à rede.
 
 ## Como funciona
 
-- A lista vem do hub principal (a mesma usada pela Alexa e pelo Google).
-- Cada comando vai ao hub principal no formato do comando de voz, pelo identificador do item; ele repassa ao hub dono do circuito. Item desmarcado é recusado pelo próprio hub.
-- O estado vem da memória do hub principal e dos avisos de mudança dos hubs, então a tecla na parede aparece na hora.
+- As listas vêm dos hubs (as mesmas usadas pela Alexa e pelo Google).
+- Cada comando vai, no formato do comando de voz e pelo identificador do item, ao hub que guarda a lista daquele item; ele repassa ao hub dono do circuito. Item desmarcado é recusado pelo próprio hub.
+- O estado vem da memória dos hubs e dos avisos de mudança, então a tecla na parede aparece na hora.

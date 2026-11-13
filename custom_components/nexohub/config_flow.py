@@ -10,7 +10,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
 from .const import DOMAIN
-from .discovery import NoPrincipal, find_principal
+from .discovery import NoPrincipal, find_system
 
 
 class NexoConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -21,23 +21,29 @@ class NexoConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name = ""
 
     async def _probe(self, host: str) -> str | None:
-        """Acha o principal; fixa o SN dele como id único. Devolve o código do erro ou None."""
+        """Lê as listas de voz de todos os hubs; fixa o SN da âncora como id único. Devolve o erro ou None."""
         try:
-            p = await find_principal(host)
+            found = await find_system(host)
         except ConnectionError:
             return "cannot_connect"
-        except NoPrincipal as err:
-            return "no_voice" if str(err) == "no_voice" else "no_principal"
-        await self.async_set_unique_id(p.sn)
-        self._abort_if_unique_id_configured(updates={CONF_HOST: p.host})
-        self._host = p.host
-        self._name = p.name or p.sn
+        except NoPrincipal:
+            return "no_voice"
+        # o mesmo sistema adicionado por outro hub (ou já configurado por um hub que ainda tem lista)
+        for entry in self._async_current_entries(include_ignore=False):
+            if entry.unique_id in {h.sn for h in found.holders}:
+                return "already_configured"
+        await self.async_set_unique_id(found.sn)
+        self._abort_if_unique_id_configured(updates={CONF_HOST: found.host})
+        self._host = found.host
+        self._name = str(found.hub(found.sn).get("name") or found.sn)
         return None
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             error = await self._probe(user_input[CONF_HOST].strip())
+            if error == "already_configured":
+                return self.async_abort(reason=error)
             if error is None:
                 return self.async_create_entry(title=f"Nexo - {self._name}", data={CONF_HOST: self._host})
             errors["base"] = error

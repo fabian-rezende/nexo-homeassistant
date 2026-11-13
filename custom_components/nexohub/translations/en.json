@@ -4,24 +4,24 @@
     "step": {
       "user": {
         "title": "Nexo Hub",
-        "description": "Enter the IP address of any Nexo Hub in the home. The integration finds the main hub and uses its voice command list: only the selected items are added.",
+        "description": "Enter the IP address of any Nexo Hub in the home. The integration reads the voice command list of every hub in the home: only the selected items are added.",
         "data": { "host": "IP address" }
       },
       "confirm": {
         "title": "Nexo Hub found",
-        "description": "Add the Nexo system of main hub {name} ({host})?"
+        "description": "Add the Nexo system of {name} ({host})?"
       }
     },
     "error": {
       "cannot_connect": "The hub did not answer at this address.",
       "no_principal": "Could not find the main hub of the home.",
-      "no_voice": "The main hub has no items selected for voice control. Select the circuits on the voice command page of the configurator."
+      "no_voice": "No hub in the home has items selected for voice control. Select the circuits on the voice command page of the configurator."
     },
     "abort": {
       "already_configured": "This Nexo system is already configured.",
       "cannot_connect": "The hub did not answer.",
       "no_principal": "Could not find the main hub of the home.",
-      "no_voice": "The main hub has no items selected for voice control."
+      "no_voice": "No hub in the home has items selected for voice control."
     }
   }
 }

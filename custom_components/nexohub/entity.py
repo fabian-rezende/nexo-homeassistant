@@ -14,14 +14,14 @@ from homeassistant.helpers.event import async_call_later
 
 from .const import DOMAIN, MANUFACTURER
 from .discovery import room_of
-from .nexo import Endpoint, NexoError, NexoHub
+from .nexo import Endpoint, NexoError, NexoSystem
 
 OPTIMISTIC_S = 4.0     # sem confirmação nesse tempo, volta ao estado conhecido
 CONFIRM_S = 0.6        # report do endpoint depois do comando (o ack do hub é sempre ok)
 MODEL = {"R": "Relé (voz)", "D": "Dimmer (voz)", "B": "Cortina (voz)", "S": "Cena (voz)"}
 
 
-def endpoints_of(hub: NexoHub, kind: str) -> list[Endpoint]:
+def endpoints_of(hub: NexoSystem, kind: str) -> list[Endpoint]:
     return [e for e in hub.endpoints.values() if e.kind == kind]
 
 
@@ -30,7 +30,7 @@ class NexoEntity(Entity):
     _attr_should_poll = False
     _attr_name = None
 
-    def __init__(self, hub: NexoHub, ep: Endpoint) -> None:
+    def __init__(self, hub: NexoSystem, ep: Endpoint) -> None:
         self._hub = hub
         self._ep = ep
         self._optimistic: tuple[dict[str, Any], float] | None = None
@@ -43,7 +43,7 @@ class NexoEntity(Entity):
             model=MODEL.get(ep.kind),
             suggested_area=None if ep.kind == "S" else room_of(getattr(hub, "appdata", {}), ep.addr, ep.out),
         )
-        dev_id = getattr(hub, "principal_device_id", None)
+        dev_id = getattr(hub, "hub_device_ids", {}).get(ep.holder)
         if dev_id:
             info["via_device_id"] = dev_id
         self._attr_device_info = info
@@ -59,7 +59,8 @@ class NexoEntity(Entity):
 
     @property
     def available(self) -> bool:
-        return self._hub.connected
+        # o item depende só da conexão com o hub que guarda a lista dele
+        return self._hub.endpoint_available(self._ep)
 
     @property
     def _state(self) -> dict[str, Any] | None:
@@ -81,7 +82,7 @@ class NexoEntity(Entity):
         try:
             await self._hub.command(self._ep, voice_state)
         except (ConnectionError, OSError) as err:
-            raise HomeAssistantError(f"Hub principal do Nexo sem conexão: {err}") from err
+            raise HomeAssistantError(f"Nexo Hub sem conexão: {err}") from err
         if expected is None:
             return
         self._drop()

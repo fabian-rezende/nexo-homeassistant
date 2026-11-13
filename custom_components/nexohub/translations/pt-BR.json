@@ -4,24 +4,24 @@
     "step": {
       "user": {
         "title": "Nexo Hub",
-        "description": "Informe o IP de qualquer Nexo Hub da casa. A integração acha o hub principal e usa a lista de comando de voz dele: só os itens marcados aparecem.",
+        "description": "Informe o IP de qualquer Nexo Hub da casa. A integração lê a lista de comando de voz de todos os hubs da casa: só os itens marcados aparecem.",
         "data": { "host": "Endereço IP" }
       },
       "confirm": {
         "title": "Nexo Hub encontrado",
-        "description": "Adicionar o sistema Nexo do hub principal {name} ({host})?"
+        "description": "Adicionar o sistema Nexo de {name} ({host})?"
       }
     },
     "error": {
       "cannot_connect": "O hub não respondeu nesse endereço.",
       "no_principal": "Não foi possível achar o hub principal da casa.",
-      "no_voice": "O hub principal está sem itens marcados para comando de voz. Marque os circuitos na tela de comando de voz do configurador."
+      "no_voice": "Nenhum hub da casa tem itens marcados para comando de voz. Marque os circuitos na tela de comando de voz do configurador."
     },
     "abort": {
       "already_configured": "Este sistema Nexo já está configurado.",
       "cannot_connect": "O hub não respondeu.",
       "no_principal": "Não foi possível achar o hub principal da casa.",
-      "no_voice": "O hub principal está sem itens marcados para comando de voz."
+      "no_voice": "Nenhum hub da casa tem itens marcados para comando de voz."
     }
   }
 }
