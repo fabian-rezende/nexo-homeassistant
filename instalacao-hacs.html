@@ -143,10 +143,18 @@ docker restart homeassistant</code></pre>
   <h3>O que é preciso no Nexo</h3>
   <ul>
     <li>Os hubs na mesma rede do Home Assistant.</li>
-    <li>Os itens marcados na tela <strong>"Enviar dispositivos para comando de voz"</strong> do configurador, em qualquer hub. Essas listas, as mesmas da Alexa e do Google, definem o que aparece no Home Assistant; a integração junta a de todos os hubs.</li>
+    <li>Os itens marcados na tela <strong>"Enviar dispositivos para comando de voz"</strong> do configurador. Essas listas, as mesmas da Alexa e do Google, definem o que aparece no Home Assistant; a integração junta a de todos os hubs.</li>
     <li>Cortina calibrada no configurador, para aceitar comando.</li>
     <li>IP fixo ou reservado no roteador é recomendável.</li>
   </ul>
+  <h3>Como marcar os itens</h3>
+  <ol>
+    <li>No navegador, abra o IP do <strong>Nexo Hub Relé</strong> principal e entre no configurador.</li>
+    <li>No menu (☰), abra <strong>Enviar dispositivos para comando de voz</strong>. Se não estiver lá, ligue antes <strong>Configurações gerais → Autenticação e Nuvem → Comunicação remota</strong>.</li>
+    <li>Nas abas <strong>Circuitos</strong> e <strong>Cenas</strong>, marque o que deve ir para o Home Assistant e confira o <strong>Nome falado</strong>: é o nome da entidade.</li>
+    <li>A lista é gravada sozinha no hub. Para o Home Assistant não é preciso clicar em "Enviar para assistentes de voz e IA" (esse botão é da Alexa e do Google).</li>
+  </ol>
+  <p class="suave">Marque num Nexo Hub Relé. No Nexo Hub Dimmer a memória dos níveis grava no mesmo espaço da lista e a estraga; os circuitos do dimmer podem ser marcados na lista do relé.</p>
   <p class="suave">Marcar ou desmarcar itens no configurador muda o Home Assistant sozinho em até 5 minutos.</p>
 </section>
 
